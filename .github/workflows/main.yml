@@ -29,7 +29,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r Deploy/requirements.txt
+        pip install -r pipeline/requirements.txt
         # ติดตั้งเครื่องมือสำหรับ Linting และ Testing
         pip install flake8 pytest pandas
 
@@ -37,8 +37,8 @@ jobs:
     - name: Lint with flake8
       # ตรวจสอบคุณภาพและความถูกต้องของโค้ด Python
       run: |
-        flake8 Deploy/scripts --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 Deploy/scripts --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        flake8 pipeline/scripts --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 pipeline/scripts --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
 
     - name: Test with pytest
@@ -71,25 +71,25 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r Deploy/requirements.txt
+        pip install -r pipeline/requirements.txt
 
 
     - name: Run Data Validation
-      run: python Deploy/scripts/01_data_validation.py
+      run: python pipeline/scripts/01_data_validation.py
 
 
     - name: Run Data Preprocessing
       id: preprocessing
-      run: python Deploy/scripts/02_data_preprocessing.py
+      run: python pipeline/scripts/02_data_preprocessing.py
 
 
     - name: Run Model Training, Evaluation, and Registration
-      run: python Deploy/scripts/03_train_evaluate_register.py ${{ steps.preprocessing.outputs.run_id }}
+      run: python pipeline/scripts/03_train_evaluate_register.py ${{ steps.preprocessing.outputs.run_id }}
 
 
     - name: Transition Model to Staging
       if: success()
-      run: python Deploy/scripts/04_transition_model.py "breast-caner-prod" "Staging"
+      run: python pipeline/scripts/04_transition_model.py "breast-caner-prod" "Staging"
 
 
     - name: Upload MLflow artifacts for inspection
