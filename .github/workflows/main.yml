@@ -89,7 +89,7 @@ jobs:
 
     - name: Transition Model to Staging
       if: success()
-      run: python pipeline/scripts/04_transition_model.py "breast-caner-prod" "Staging"
+      run: python pipeline/scripts/04_transition_model.py "emotion-classifier-prod" "Staging"
 
 
     - name: Upload MLflow artifacts for inspection
