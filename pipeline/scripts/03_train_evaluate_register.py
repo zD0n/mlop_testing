@@ -156,7 +156,7 @@ def train_evaluate_register(preprocessing_run_id):
 
         pipeline = Pipeline([
             ("identity", IdentityTransformer()),
-            ("model", TorchTextClassifier(epochs=10, batch_size=32))
+            ("model", TorchTextClassifier(epochs=20, batch_size=32))
         ])
 
         pipeline.fit(train_df["sequence"], train_df["label"])
