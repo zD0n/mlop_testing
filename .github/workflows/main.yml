@@ -71,25 +71,25 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r pipeline/requirements.txt
+        pip install -r ./pipeline/requirements.txt
 
 
     - name: Run Data Validation
-      run: python pipeline/scripts/01_data_validation.py
+      run: python ./pipeline/scripts/01_data_validation.py
 
 
     - name: Run Data Preprocessing
       id: preprocessing
-      run: python pipeline/scripts/02_data_preprocessing.py
+      run: python ./pipeline/scripts/02_data_preprocessing.py
 
 
     - name: Run Model Training, Evaluation, and Registration
-      run: python pipeline/scripts/03_train_evaluate_register.py ${{ steps.preprocessing.outputs.run_id }}
+      run: python ./pipeline/scripts/03_train_evaluate_register.py ${{ steps.preprocessing.outputs.run_id }}
 
 
     - name: Transition Model to Staging
       if: success()
-      run: python pipeline/scripts/04_transition_model.py "emotion-classifier-prod" "Staging"
+      run: python ./pipeline/scripts/04_transition_model.py "emotion-classifier-prod" "Staging"
 
 
     - name: Upload MLflow artifacts for inspection
