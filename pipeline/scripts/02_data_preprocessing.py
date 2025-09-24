@@ -137,7 +137,10 @@ def preprocess_data():
         print(f"Data preprocessing run finished. Please use the following Run ID for the next step:")
         print(f"Preprocessing Run ID: {run_id}")
         print("-" * 50)
-
+        
+        if "GITHUB_OUTPUT" in os.environ:
+            with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                print(f"run_id={run_id}", file=f)
 
 if __name__ == "__main__":
     preprocess_data()
