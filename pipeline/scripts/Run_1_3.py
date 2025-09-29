@@ -3,6 +3,7 @@ import re
 import os
 
 #Run Under Conda enviroment from the follow requirements.txt with python version 3.10.18
+#How to run this Example you have to run like this C:\Coding\ML\Mini_project>python Run_1_3.py
 
 folder_path = "./scripts"
 

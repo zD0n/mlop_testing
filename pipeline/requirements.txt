@@ -1,3 +1,4 @@
+flask
 torch>=1.9.0
 numpy<2
 matplotlib>=3.4.0
