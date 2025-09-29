@@ -41,6 +41,9 @@ if __name__ == "__main__":
         print("Usage: python scripts/04_transition_model.py <model_name> <alias>")
         sys.exit(1)
     
-    model_name_arg = sys.argv[1]
-    target_alias_arg = sys.argv[2]
-    transition_model_alias(model_name_arg, target_alias_arg)
+    try:
+        model_name_arg = sys.argv[1]
+        target_alias_arg = sys.argv[2]
+        transition_model_alias(model_name_arg, target_alias_arg)
+    except:
+        pass
