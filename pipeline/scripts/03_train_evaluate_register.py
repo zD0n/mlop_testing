@@ -162,9 +162,9 @@ def train_evaluate_register(preprocessing_run_id,model_name,epochs=10):
             registered_model = mlflow.register_model(model_uri, model_name)
             print(f"Model registered as '{registered_model.name}' version {registered_model.version}")
             
-            with open("emotion_pipeline.pkl", "wb") as f:
+            with open(f"{model_name}.pkl", "wb") as f:
                 pickle.dump(pipeline, f)
-            print("Pipeline saved to emotion_pipeline.pkl")
+            print(f"Pipeline saved to {model_name}.pkl")
         else:
             print(f"Model accuracy {acc:.4f} is below the threshold. Not registering.")
 

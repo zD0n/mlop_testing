@@ -9,6 +9,9 @@ on:
   pull_request:
     branches: [ "main" ]
 
+env:
+  MODEL_NAME: "emotion-classifier"
+  INITIAL_EPOCHS: 10
 
 jobs:
   # --- JOB ใหม่ที่เพิ่มเข้ามาสำหรับ CI ---
@@ -83,13 +86,18 @@ jobs:
       run: python pipeline/scripts/02_data_preprocessing.py
 
 
+    - name: Build and Train
+      run: |
+        python pipeline/scripts/03_train_evaluate_register.py ${{ steps.preprocessing.outputs.run_id }} $INITIAL_EPOCHS "$MODEL_NAME"
+
+
     - name: Build, Train, and Transition Model to Staging
       run: |
         MAX_RETRIES=3
         COUNT=0
-        EPOCHS=10  # initial number of epochs
+        EPOCHS=$(( INITIAL_EPOCHS + 10 ))
 
-        until python pipeline/scripts/04_transition_model.py "emotion-classifier" "Staging"; do
+        until python pipeline/scripts/04_transition_model.py "$MODEL_NAME" "Staging"; do
           COUNT=$((COUNT+1))
           if [ $COUNT -ge $MAX_RETRIES ]; then
             echo "Transition failed after $COUNT attempts."
@@ -98,10 +106,8 @@ jobs:
 
           echo "Transition failed. Retrying training + transition (attempt $((COUNT+1))) with $EPOCHS epochs..."
 
-          # Run training with current number of epochs
-          python pipeline/scripts/03_train_evaluate_register.py ${{ steps.preprocessing.outputs.run_id }} $EPOCHS "emotion-classifier"
+          python pipeline/scripts/03_train_evaluate_register.py ${{ steps.preprocessing.outputs.run_id }} $EPOCHS "$MODEL_NAME"
 
-          # Increase epochs for next retry
           EPOCHS=$((EPOCHS+10))
         done
 
@@ -115,5 +121,5 @@ jobs:
     - name: Upload trained model
       uses: actions/upload-artifact@v4
       with:
-        name: trained-model
-        path: emotion_pipeline.pkl
+        name: $MODEL_NAME
+        path: $MODEL_NAME.pkl
