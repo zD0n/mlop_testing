@@ -34,7 +34,7 @@ conda env create -f environment.yml
 
 if you not there is a requirements.txt for you.
 
-Don't forget to location to it first.
+Don't forget to set the location to it first.
 ```bash
 pip install -r requirements.txt
 ```
