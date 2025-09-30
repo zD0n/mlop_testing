@@ -12,11 +12,8 @@ from torch.utils.data import DataLoader
 from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score
+import pickle
 
-
-# --------------------------
-# 1. PyTorch Model
-# --------------------------
 class TextCNN(nn.Module):
     def __init__(self, vocab_size, embedding_dim, num_classes,
                  num_filters=100, filter_sizes=[3, 4, 5], dropout=0.5):
@@ -41,10 +38,6 @@ class TextCNN(nn.Module):
         x = self.dropout(x)
         return self.fc(x)
 
-
-# --------------------------
-# 2. Sklearn Wrapper
-# --------------------------
 class TorchTextClassifier(BaseEstimator, ClassifierMixin):
     def __init__(self, vocab_size=10000, embedding_dim=128, num_classes=6,
                  num_filters=100, filter_sizes=[3, 4, 5], dropout=0.5,
@@ -118,22 +111,16 @@ class TorchTextClassifier(BaseEstimator, ClassifierMixin):
                 probs.extend(output.cpu().numpy())
         return np.array(probs)
 
-
-# --------------------------
-# 3. Identity Transformer (for future preprocessing)
-# --------------------------
 class IdentityTransformer(TransformerMixin, BaseEstimator):
     def fit(self, X, y=None):
         return self
     def transform(self, X):
         return X
 
+def train_evaluate_register(preprocessing_run_id,model_name,epochs=10):
 
-# --------------------------
-# 4. Training + MLflow
-# --------------------------
-def train_evaluate_register(preprocessing_run_id):
     ACCURACY_THRESHOLD=0.9
+
     mlflow.set_experiment("Emotion classification - Model Training")
 
     with mlflow.start_run(run_name=f"Text CNN"):
@@ -146,9 +133,10 @@ def train_evaluate_register(preprocessing_run_id):
                 run_id=preprocessing_run_id,
                 artifact_path="processed_data"
             )
+
             train_df = pd.read_csv(os.path.join(local_artifact_path, "train.csv"))
             test_df = pd.read_csv(os.path.join(local_artifact_path, "test.csv"))
-            val_df = pd.read_csv(os.path.join(local_artifact_path, "val.csv"))
+
             print("Successfully loaded data from downloaded artifacts.")
         except Exception as e:
             print(f"Error loading artifacts: {e}")
@@ -156,7 +144,7 @@ def train_evaluate_register(preprocessing_run_id):
 
         pipeline = Pipeline([
             ("identity", IdentityTransformer()),
-            ("model", TorchTextClassifier(epochs=20, batch_size=32))
+            ("model", TorchTextClassifier(epochs=epochs, batch_size=32))
         ])
 
         pipeline.fit(train_df["sequence"], train_df["label"])
@@ -171,16 +159,22 @@ def train_evaluate_register(preprocessing_run_id):
             print(f"Model accuracy {acc:.4f} meets the threshold. Registering model...")
             mlflow.sklearn.log_model(pipeline, "Emotion_classification_pipeline")
             model_uri = f"runs:/{mlflow.active_run().info.run_id}/Emotion_classification_pipeline"
-            registered_model = mlflow.register_model(model_uri, "emotion-classifier-prod")
+            registered_model = mlflow.register_model(model_uri, model_name)
             print(f"Model registered as '{registered_model.name}' version {registered_model.version}")
+            
+            with open("emotion_pipeline.pkl", "wb") as f:
+                pickle.dump(pipeline, f)
+            print("Pipeline saved to emotion_pipeline.pkl")
         else:
             print(f"Model accuracy {acc:.4f} is below the threshold. Not registering.")
 
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python scripts/03_train_evaluate_register.py <preprocessing_run_id>")
+        print("Usage: python scripts/03_train_evaluate_register.py <preprocessing_run_id> <epochs> <Model Name>")
         sys.exit(1)
     
     run_id = sys.argv[1]
-    train_evaluate_register(preprocessing_run_id=run_id)
+    epochs = sys.argv[2]
+    name = sys.argv[3]
+    train_evaluate_register(preprocessing_run_id=run_id,epochs=int(epochs),model_name=name)

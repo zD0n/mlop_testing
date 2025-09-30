@@ -83,14 +83,27 @@ jobs:
       run: python pipeline/scripts/02_data_preprocessing.py
 
 
-    - name: Run Model Training, Evaluation, and Registration
-      run: python pipeline/scripts/03_train_evaluate_register.py ${{ steps.preprocessing.outputs.run_id }}
+    - name: Build, Train, and Transition Model to Staging
+      run: |
+        MAX_RETRIES=3
+        COUNT=0
+        EPOCHS=10  # initial number of epochs
 
+        until python pipeline/scripts/04_transition_model.py "emotion-classifier" "Staging"; do
+          COUNT=$((COUNT+1))
+          if [ $COUNT -ge $MAX_RETRIES ]; then
+            echo "Transition failed after $COUNT attempts."
+            exit 1
+          fi
 
-    - name: Transition Model to Staging
-      if: success()
-      run: python pipeline/scripts/04_transition_model.py "emotion-classifier-prod" "Staging"
+          echo "Transition failed. Retrying training + transition (attempt $((COUNT+1))) with $EPOCHS epochs..."
 
+          # Run training with current number of epochs
+          python pipeline/scripts/03_train_evaluate_register.py ${{ steps.preprocessing.outputs.run_id }} $EPOCHS "emotion-classifier"
+
+          # Increase epochs for next retry
+          EPOCHS=$((EPOCHS+10))
+        done
 
     - name: Upload MLflow artifacts for inspection
       if: success()
@@ -98,3 +111,9 @@ jobs:
       with:
         name: mlflow-artifacts
         path: mlruns/
+
+    - name: Upload trained model
+      uses: actions/upload-artifact@v4
+      with:
+        name: trained-model
+        path: emotion_pipeline.pkl

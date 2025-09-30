@@ -4,66 +4,83 @@ import os
 import pandas as pd
 import json
 import string
-
-def load_and_predict():
-    """
-    Simulates a production scenario by loading a model from a specific
-    stage in the MLflow Model Registry and using it for prediction.
-    """
-    MODEL_NAME = "emotion-classifier-prod"
-    MODEL_STAGE = "Staging" # Change to "Production" after transitioning the model stage
+import mlflow
+import sys
+from mlflow.tracking import MlflowClient
+from mlflow.tracking import MlflowClient
 
 
-    print(f"Loading model '{MODEL_NAME}' from stage '{MODEL_STAGE}'...")
-    
+
+def encode_and_pad(text,word2idx, max_len=100):
+    tokens = [str(word2idx.get(w, word2idx.get("UNK", 0))) for w in text.split()]
+    if len(tokens) < max_len:
+        tokens += ["0"] * (max_len - len(tokens)) 
+    else:
+        tokens = tokens[:max_len]
+    return " ".join(tokens)
+
+def preprocess_text(text):
+
+    text = text.lower()
+    text = text.translate(str.maketrans('', '', string.punctuation))
+    text = ' '.join(text.split())
+
+    return text
+
+def load_and_predict(model_name,text):
+
     # Load the model from the Model Registry
     try:
-        model = mlflow.pyfunc.load_model(model_uri=f"models:/{MODEL_NAME}/{MODEL_STAGE}")
+        client = MlflowClient()
+        versions = client.search_model_versions(f"name='{model_name}'")
+        latest_version = max(versions, key=lambda v: int(v.version))
+
+        model = mlflow.pyfunc.load_model(f"models:/{model_name}/{latest_version.version}")
+
     except mlflow.exceptions.MlflowException as e:
         print(f"\nError loading model: {e}")
-        print(f"Please make sure a model version is in the '{MODEL_STAGE}' stage in the MLflow UI.")
-        return
+        sys.exit(1)
 
-    # ===========================
-    # Load Vocabulary and Label Mapping
-    # ===========================
     with open(r'.\processed_data\vocab.json', 'r', encoding='utf-8') as f:
         voc = json.load(f)['idx2word']
 
-    # Reverse mapping for encoding
     word2idx = {v: int(k) for k, v in voc.items()}
 
     with open(r'.\processed_data\label_mapping.json', 'r', encoding='utf-8') as f:
         act_class = json.load(f)
 
-    def encode_and_pad(text, max_len=100):
-        tokens = [str(word2idx.get(w, word2idx.get("UNK", 0))) for w in text.split()]
-        if len(tokens) < max_len:
-            tokens += ["0"] * (max_len - len(tokens))  # pad with zeros
-        else:
-            tokens = tokens[:max_len]  # truncate if too long
-        return " ".join(tokens)
-
-    def preprocess_text(text):
-
-        text = text.lower()
-        text = text.translate(str.maketrans('', '', string.punctuation))
-        text = ' '.join(text.split())
-
-        return text
-
-    text = "I feel so alive."
-
-    encoded_text = encode_and_pad(preprocess_text(text))
+    encoded_text = encode_and_pad(preprocess_text(text),word2idx)
 
     prediction = model.predict([encoded_text])
-    print(prediction)
     print("-" * 30)
     print(f"Input Text:\n{text}")
     print(f"Predicted Label: {act_class.get(str(prediction[0]))}")
+    print("-" * 30)
 
 
 if __name__ == "__main__":
-    load_and_predict()
+    try:
+        if len(sys.argv) != 3:
+            print("Usage: python scripts/04_transition_model.py <model_name> <Text Eg. 'I Feel so alive.'>")
+            print("Or you can")
+            sys.exit(1)
 
+        model_name_arg = sys.argv[1]
+        input_text = sys.argv[2]
+        load_and_predict(model_name_arg, input_text)
+    except:
+        try:
+            client = MlflowClient()
 
+            # Get all registered models
+            registered_models = client.search_registered_models()
+            print("-" * 30)
+            print("Registered models:")
+            for model in registered_models:
+                print("-", model.name)
+            print("-" * 30)
+            model_name_arg= str(input("Model Name: "))
+            input_text = str(input("Input Text: "))
+            load_and_predict(model_name_arg,input_text)
+        except:
+            print("try train some model first. Incase if you already train maybe it about the path")

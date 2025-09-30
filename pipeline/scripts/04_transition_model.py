@@ -1,15 +1,22 @@
 import sys
 from mlflow.tracking import MlflowClient
 
+"""
+****************   Warning   ***********************************
+
+This part of code it somehow not changing the stage of the model 
+
+So if want to change stage of the model better manual it or call the model using version of it
+
+****************************************************************
+"""
+
 
 def transition_model_alias(model_name, alias):
-    """
-    Sets an alias for the latest version of a registered model.
-    This replaces the deprecated "stage" functionality.
-    """
+
     client = MlflowClient()
     try:
-        # Find the latest version of the model by searching and sorting
+
         versions = client.search_model_versions(f"name='{model_name}'")
         if not versions:
             print(f"Error: No versions found for model '{model_name}'.")
@@ -19,9 +26,6 @@ def transition_model_alias(model_name, alias):
         version_number = latest_version.version
         print(f"Found latest model version: {version_number}")
 
-
-        # Set the alias for the latest version
-        # This is the modern replacement for transitioning stages
         print(f"Setting alias '{alias}' for model version {version_number}...")
         client.set_registered_model_alias(
             name=model_name,
@@ -41,9 +45,6 @@ if __name__ == "__main__":
         print("Usage: python scripts/04_transition_model.py <model_name> <alias>")
         sys.exit(1)
     
-    try:
-        model_name_arg = sys.argv[1]
-        target_alias_arg = sys.argv[2]
-        transition_model_alias(model_name_arg, target_alias_arg)
-    except:
-        pass
+    model_name_arg = sys.argv[1]
+    target_alias_arg = sys.argv[2]
+    transition_model_alias(model_name_arg, target_alias_arg)

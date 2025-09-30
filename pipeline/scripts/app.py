@@ -35,10 +35,6 @@ class TextCNN(nn.Module):
         x = self.dropout(x)
         return self.fc(x)
 
-
-# --------------------------
-# 2. Sklearn Wrapper
-# --------------------------
 class TorchTextClassifier(BaseEstimator, ClassifierMixin):
     def __init__(self, vocab_size=10000, embedding_dim=128, num_classes=6,
                  num_filters=100, filter_sizes=[3, 4, 5], dropout=0.5,
@@ -113,9 +109,6 @@ class TorchTextClassifier(BaseEstimator, ClassifierMixin):
         return np.array(probs)
 
 
-# --------------------------
-# 3. Identity Transformer (for future preprocessing)
-# --------------------------
 class IdentityTransformer(TransformerMixin, BaseEstimator):
     def fit(self, X, y=None):
         return self
@@ -123,7 +116,7 @@ class IdentityTransformer(TransformerMixin, BaseEstimator):
         return X
 
 try:
-    with open("./emotion_pipeline.pkl", "rb") as f:
+    with open("./emotion-classifier.pkl", "rb") as f:
         model = pickle.load(f)
 
     with open('./processed_data/vocab.json', 'r', encoding='utf-8') as f:
