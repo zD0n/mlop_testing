@@ -61,7 +61,7 @@ def load_and_predict(model_name,text):
 if __name__ == "__main__":
     try:
         if len(sys.argv) != 3:
-            print("Usage: python scripts/04_transition_model.py <model_name> <Text Eg. 'I Feel so alive.'>")
+            print("Usage: python ./pipeline/scripts/04_transition_model.py <model_name> <Text Eg. 'I Feel so alive.'>")
             print("Or you can")
             sys.exit(1)
 

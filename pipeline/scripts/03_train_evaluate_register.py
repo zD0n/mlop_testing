@@ -171,7 +171,7 @@ def train_evaluate_register(preprocessing_run_id,model_name,epochs=10):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python scripts/03_train_evaluate_register.py <preprocessing_run_id> <epochs> <Model Name>")
+        print("Usage: python ./pipeline/scripts/03_train_evaluate_register.py <preprocessing_run_id> <epochs> <Model Name>")
         sys.exit(1)
     
     run_id = sys.argv[1]

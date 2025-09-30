@@ -86,12 +86,12 @@ jobs:
       run: python pipeline/scripts/02_data_preprocessing.py
 
 
-    - name: Build and Train
+    - name: Build and Train the model
       run: |
         python pipeline/scripts/03_train_evaluate_register.py ${{ steps.preprocessing.outputs.run_id }} $INITIAL_EPOCHS "$MODEL_NAME"
 
 
-    - name: Build, Train, and Transition Model to Staging
+    - name: Try Transition Model to Staging
       run: |
         MAX_RETRIES=3
         COUNT=0
