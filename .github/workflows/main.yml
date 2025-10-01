@@ -78,17 +78,17 @@ jobs:
 
 
     - name: Run Data Validation
-      run: python pipeline/scripts/01_data_validation.py
+      run: python pipeline/scripts/data_validation.py
 
 
     - name: Run Data Preprocessing
       id: preprocessing
-      run: python pipeline/scripts/02_data_preprocessing.py
+      run: python pipeline/scripts/data_preprocessing.py
 
 
     - name: Build and Train the model
       run: |
-        python pipeline/scripts/03_train_evaluate_register.py ${{ steps.preprocessing.outputs.run_id }} $INITIAL_EPOCHS "$MODEL_NAME"
+        python pipeline/scripts/train_evaluate_register.py ${{ steps.preprocessing.outputs.run_id }} $INITIAL_EPOCHS "$MODEL_NAME"
 
 
     - name: Try Transition Model to Staging
@@ -97,7 +97,7 @@ jobs:
         COUNT=0
         EPOCHS=$(( INITIAL_EPOCHS + 10 ))
 
-        until python pipeline/scripts/04_transition_model.py "$MODEL_NAME" "Staging"; do
+        until python pipeline/scripts/transition_model.py "$MODEL_NAME" "Staging"; do
           COUNT=$((COUNT+1))
           if [ $COUNT -ge $MAX_RETRIES ]; then
             echo "Transition failed after $COUNT attempts."
@@ -106,7 +106,7 @@ jobs:
 
           echo "Transition failed. Retrying training + transition (attempt $((COUNT+1))) with $EPOCHS epochs..."
 
-          python pipeline/scripts/03_train_evaluate_register.py ${{ steps.preprocessing.outputs.run_id }} $EPOCHS "$MODEL_NAME"
+          python pipeline/scripts/train_evaluate_register.py ${{ steps.preprocessing.outputs.run_id }} $EPOCHS "$MODEL_NAME"
 
           EPOCHS=$((EPOCHS+10))
         done

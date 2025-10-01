@@ -20,7 +20,8 @@ def transition_model_alias(model_name, alias):
         versions = client.search_model_versions(f"name='{model_name}'")
         if not versions:
             print(f"Error: No versions found for model '{model_name}'.")
-            sys.exit(1)
+            # sys.exit(1)
+            return False
             
         latest_version = max(versions, key=lambda mv: int(mv.version))
         version_number = latest_version.version
@@ -33,7 +34,7 @@ def transition_model_alias(model_name, alias):
             version=version_number
         )
         print(f"Successfully set alias '{alias}' for model '{model_name}' version {version_number}.")
-
+        return True
 
     except Exception as e:
         print(f"An error occurred while setting the model alias: {e}")

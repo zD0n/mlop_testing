@@ -142,5 +142,7 @@ def preprocess_data():
             with open(os.environ["GITHUB_OUTPUT"], "a") as f:
                 print(f"run_id={run_id}", file=f)
 
+    return run.info.run_id
+
 if __name__ == "__main__":
     preprocess_data()
