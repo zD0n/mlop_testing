@@ -95,34 +95,52 @@ jobs:
           "$MODEL_NAME" \
           0.8
 
-    - name: Try Transition Model to Staging
+    - name: Train in Batches and Try Transition
       run: |
         MAX_RETRIES=5
         COUNT=0
-        EPOCHS=$(( INITIAL_EPOCHS + 10 ))
-        THRESHOLD=${{ steps.train.outputs.final_accuracy }}
+        BEST_THRESHOLD=0.8   # starting threshold
+        EPOCHS=$INITIAL_EPOCHS
 
-        until python pipeline/scripts/transition_model.py "$MODEL_NAME" "Staging"; do
-          COUNT=$((COUNT+1))
-          if [ $COUNT -ge $MAX_RETRIES ]; then
-            echo "Transition failed after $COUNT attempts."
-            exit 1
+        while [ $COUNT -lt $MAX_RETRIES ]; do
+          echo "==== Training batch $((COUNT+1)) with BEST_THRESHOLD=$BEST_THRESHOLD ===="
+
+          for i in {1..5}; do
+            echo "---- Training run $i in batch ----"
+
+            # Run training, capture accuracy to a file
+            ACC=$(python pipeline/scripts/train_evaluate_register.py \
+              ${{ steps.preprocessing.outputs.run_id }} \
+              $EPOCHS \
+              "$MODEL_NAME" \
+              $BEST_THRESHOLD | tee /dev/stderr | grep "Test Accuracy:" | awk '{print $3}')
+
+            echo "Got accuracy: $ACC"
+
+            # Update BEST_THRESHOLD if improved
+            if (( $(echo "$ACC > $BEST_THRESHOLD" | bc -l) )); then
+              BEST_THRESHOLD=$ACC
+              echo "Updated BEST_THRESHOLD=$BEST_THRESHOLD"
+            fi
+
+            EPOCHS=$((EPOCHS+1))
+          done
+
+          echo "==== Finished 5 runs, trying transition with BEST_THRESHOLD=$BEST_THRESHOLD ===="
+
+          if python pipeline/scripts/transition_model.py "$MODEL_NAME" "Staging"; then
+            echo "Transition succeeded "
+            exit 0
           fi
 
-          echo "Transition failed. Retrying training + transition (attempt $((COUNT+1))) with $EPOCHS epochs and threshold $THRESHOLD..."
-
-          python pipeline/scripts/train_evaluate_register.py \
-            ${{ steps.preprocessing.outputs.run_id }} \
-            $EPOCHS \
-            "$MODEL_NAME" \
-            $THRESHOLD
-
-          # update threshold from latest run
-          THRESHOLD=${{ steps.train.outputs.final_accuracy }}
-
-          EPOCHS=$((EPOCHS+10))
+          echo "Transition failed after batch $((COUNT+1)). Retrying training batch..."
+          COUNT=$((COUNT+1))
+          EPOCHS=$((EPOCHS+5))   # bump epochs more aggressively each batch
         done
-        
+
+        echo " Transition failed after $MAX_RETRIES batches (25 runs total)"
+        exit 1
+
     - name: Upload MLflow artifacts for inspection
       if: success()
       uses: actions/upload-artifact@v4
