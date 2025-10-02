@@ -188,4 +188,4 @@ if __name__ == "__main__":
         threshold = sys.argv[4]
     except:
         threshold = 0.8
-    train_evaluate_register(preprocessing_run_id=run_id,epochs=int(epochs),model_name=name,ACCURACY_THRESHOLD=threshold)
+    train_evaluate_register(preprocessing_run_id=run_id,epochs=int(epochs),model_name=name,ACCURACY_THRESHOLD=float(threshold))
