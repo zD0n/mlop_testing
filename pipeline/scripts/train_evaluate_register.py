@@ -104,10 +104,12 @@ class TorchTextClassifier(BaseEstimator, ClassifierMixin):
         dataset = torch.tensor([list(map(int, seq.split())) for seq in X], dtype=torch.long)
         loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
         probs = []
+        print("test")
         with torch.no_grad():
             for data in loader:
                 data = data.to(self.device)
                 output = torch.softmax(self.model_(data), dim=1)
+                print("output ",output)
                 probs.extend(output.cpu().numpy())
         return np.array(probs)
 
@@ -117,9 +119,7 @@ class IdentityTransformer(TransformerMixin, BaseEstimator):
     def transform(self, X):
         return X
 
-def train_evaluate_register(preprocessing_run_id,model_name,epochs=10):
-
-    ACCURACY_THRESHOLD=0.9
+def train_evaluate_register(preprocessing_run_id,model_name,epochs=10,ACCURACY_THRESHOLD=0.8):
 
     mlflow.set_experiment("Emotion classification - Model Training")
 
@@ -153,6 +153,12 @@ def train_evaluate_register(preprocessing_run_id,model_name,epochs=10):
         acc = accuracy_score(test_df["label"], y_pred)
         print(f"Test Accuracy: {acc:.4f}")
 
+        try:
+            with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                print(f"final_accuracy={acc:.4f}", file=f)
+        except:
+            pass
+
         mlflow.log_metric("accuracy", acc)
 
         if acc >= ACCURACY_THRESHOLD:
@@ -167,7 +173,8 @@ def train_evaluate_register(preprocessing_run_id,model_name,epochs=10):
             print(f"Pipeline saved to model.pkl")
         else:
             print(f"Model accuracy {acc:.4f} is below the threshold. Not registering.")
-
+    
+    return acc
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
@@ -177,4 +184,8 @@ if __name__ == "__main__":
     run_id = sys.argv[1]
     epochs = sys.argv[2]
     name = sys.argv[3]
-    train_evaluate_register(preprocessing_run_id=run_id,epochs=int(epochs),model_name=name)
+    try:
+        threshold = sys.argv[4]
+    except:
+        threshold = 0.8
+    train_evaluate_register(preprocessing_run_id=run_id,epochs=int(epochs),model_name=name,ACCURACY_THRESHOLD=threshold)

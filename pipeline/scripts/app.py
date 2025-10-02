@@ -10,7 +10,7 @@ from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
 import pickle
 import json
 import string
-
+import re
 class TextCNN(nn.Module):
     def __init__(self, vocab_size, embedding_dim, num_classes,
                  num_filters=100, filter_sizes=[3, 4, 5], dropout=0.5):
@@ -154,10 +154,26 @@ app = Flask(__name__)
 
 def predict():
     data = request.get_json(force=True)
+    text = data.get("text", "")
 
+    if not isinstance(text, str):
+        return jsonify({"error": "Input must be a string"}), 400
+
+    # Count categories
+    letters = len(re.findall(r"[A-Za-z]", text))
+    numbers = len(re.findall(r"[0-9]", text))
+    symbols = len(re.findall(r"[^A-Za-z0-9\s]", text))  # everything else (punctuation, emoji, etc.)
+
+    # Rule 1: Too many symbols
+    if symbols > (letters + numbers):
+        return jsonify({"error": "Too many symbols compared to letters/numbers"}), 400
+
+    # Rule 2: Too many numbers
+    if numbers > letters:
+        return jsonify({"error": "Too many numbers compared to letters"}), 400
     try:
 
-        encoded_text = encode_and_pad(preprocess_text(data['text']))
+        encoded_text = encode_and_pad(preprocess_text(text))
 
         prediction = model.predict([encoded_text])
 

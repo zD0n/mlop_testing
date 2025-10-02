@@ -52,6 +52,8 @@ def load_and_predict(model_name,text):
     encoded_text = encode_and_pad(preprocess_text(text),word2idx)
 
     prediction = model.predict([encoded_text])
+    print(prediction)
+
     print("-" * 30)
     print(f"Input Text:\n{text}")
     print(f"Predicted Label: {act_class.get(str(prediction[0]))}")
@@ -79,8 +81,10 @@ if __name__ == "__main__":
             for model in registered_models:
                 print("-", model.name)
             print("-" * 30)
-            model_name_arg= str(input("Model Name: "))
+            # model_name_arg= str(input("Model Name: "))
+            model_name_arg = model.name
             input_text = str(input("Input Text: "))
             load_and_predict(model_name_arg,input_text)
-        except:
+        except Exception as e:
+            print(e)
             print("try train some model first. Incase if you already train maybe it about the path")
