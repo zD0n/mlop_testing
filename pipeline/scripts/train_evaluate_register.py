@@ -13,6 +13,7 @@ from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score
 import pickle
+from sklearn.metrics import f1_score
 
 class TextCNN(nn.Module):
     def __init__(self, vocab_size, embedding_dim, num_classes,
@@ -40,8 +41,8 @@ class TextCNN(nn.Module):
 
 class TorchTextClassifier(BaseEstimator, ClassifierMixin):
     def __init__(self, vocab_size=10000, embedding_dim=128, num_classes=6,
-                 num_filters=100, filter_sizes=[3, 4, 5], dropout=0.5,
-                 lr=0.001, batch_size=32, epochs=5, device=None):
+                 num_filters=100, filter_sizes=[3, 4, 5], dropout=0.3,
+                 lr=0.005, batch_size=64, epochs=5, device=None):
         self.vocab_size = vocab_size
         self.embedding_dim = embedding_dim
         self.num_classes = num_classes
@@ -63,8 +64,8 @@ class TorchTextClassifier(BaseEstimator, ClassifierMixin):
         loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
 
         self.model_ = TextCNN(self.vocab_size, self.embedding_dim,
-                              self.num_classes, self.num_filters,
-                              self.filter_sizes, self.dropout).to(self.device)
+                            self.num_classes, self.num_filters,
+                            self.filter_sizes, self.dropout).to(self.device)
 
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(self.model_.parameters(), lr=self.lr)
@@ -72,6 +73,8 @@ class TorchTextClassifier(BaseEstimator, ClassifierMixin):
         for epoch in range(self.epochs):
             self.model_.train()
             total_loss, correct, total = 0, 0, 0
+            all_preds, all_targets = [], []
+
             for data, target in loader:
                 data, target = data.to(self.device), target.to(self.device)
                 optimizer.zero_grad()
@@ -84,7 +87,21 @@ class TorchTextClassifier(BaseEstimator, ClassifierMixin):
                 pred = output.argmax(dim=1)
                 correct += pred.eq(target).sum().item()
                 total += target.size(0)
-            print(f"Epoch {epoch+1}: Loss {total_loss/len(loader):.4f}, Acc {100*correct/total:.2f}%")
+
+                all_preds.extend(pred.cpu().numpy())
+                all_targets.extend(target.cpu().numpy())
+
+            avg_loss = total_loss / len(loader)
+            acc = 100 * correct / total
+            f1 = f1_score(all_targets, all_preds, average="weighted")
+
+            print(f"Epoch {epoch+1}: Loss {avg_loss:.4f}, Acc {acc:.2f}%, F1 {f1:.4f}")
+
+            # 🔥 log metrics to MLflow
+            mlflow.log_metric("train_loss", avg_loss, step=epoch+1)
+            mlflow.log_metric("train_accuracy", acc, step=epoch+1)
+            mlflow.log_metric("train_f1", f1, step=epoch+1)
+
         return self
 
     def predict(self, X):
@@ -144,9 +161,20 @@ def train_evaluate_register(preprocessing_run_id,model_name,epochs=10,ACCURACY_T
 
         pipeline = Pipeline([
             ("identity", IdentityTransformer()),
-            ("model", TorchTextClassifier(epochs=epochs, batch_size=32))
+            ("model", TorchTextClassifier(epochs=epochs, batch_size=64))
         ])
+        clf = pipeline.named_steps["model"]
 
+        mlflow.log_params({
+            "embedding_dim": clf.embedding_dim,
+            "num_classes": clf.num_classes,
+            "dropout": clf.dropout,
+            "lr": clf.lr,
+            "batch_size": clf.batch_size,
+            "epochs": clf.epochs,
+            "optimizer": "Adam",
+            "loss_fn":"CrossEntropyLoss"
+        })
         pipeline.fit(train_df["sequence"], train_df["label"])
 
         y_pred = pipeline.predict(test_df["sequence"])
@@ -159,7 +187,7 @@ def train_evaluate_register(preprocessing_run_id,model_name,epochs=10,ACCURACY_T
         except:
             pass
 
-        mlflow.log_metric("accuracy", acc)
+        mlflow.log_metric("Predict Accuracy", acc)
 
         if acc >= ACCURACY_THRESHOLD:
             print(f"Model accuracy {acc:.4f} meets the threshold. Registering model...")

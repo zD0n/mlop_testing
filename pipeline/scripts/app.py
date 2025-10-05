@@ -126,8 +126,8 @@ try:
     with open('./processed_data/label_mapping.json', 'r', encoding='utf-8') as f:
         act_class = json.load(f)
 
-except FileNotFoundError:
-    print("Error: ไม่พบไฟล์สักอันหนึ่ง..")
+except FileNotFoundError as E:
+    print("Error: ไม่พบไฟล์สักอันหนึ่ง..",E)
 
 
 def encode_and_pad(text, max_len=100):
