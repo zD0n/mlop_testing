@@ -41,8 +41,8 @@ class TextCNN(nn.Module):
 
 class TorchTextClassifier(BaseEstimator, ClassifierMixin):
     def __init__(self, vocab_size=10000, embedding_dim=128, num_classes=6,
-                 num_filters=100, filter_sizes=[3, 4, 5], dropout=0.3,
-                 lr=0.005, batch_size=64, epochs=5, device=None):
+                 num_filters=100, filter_sizes=[3, 4, 5], dropout=0.25,
+                 lr=0.0005, batch_size=64, epochs=5, device=None):
         self.vocab_size = vocab_size
         self.embedding_dim = embedding_dim
         self.num_classes = num_classes
@@ -53,8 +53,9 @@ class TorchTextClassifier(BaseEstimator, ClassifierMixin):
         self.batch_size = batch_size
         self.epochs = epochs
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-
         self.model_ = None
+        self.optimizer_name_ = None
+        self.criterion_name_ = None
 
     def fit(self, X, y):
         dataset = torch.utils.data.TensorDataset(
@@ -69,6 +70,9 @@ class TorchTextClassifier(BaseEstimator, ClassifierMixin):
 
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(self.model_.parameters(), lr=self.lr)
+        self.optimizer_name_ = optimizer.__class__.__name__
+        self.criterion_name_ = criterion.__class__.__name__
+
 
         for epoch in range(self.epochs):
             self.model_.train()
@@ -121,7 +125,6 @@ class TorchTextClassifier(BaseEstimator, ClassifierMixin):
         dataset = torch.tensor([list(map(int, seq.split())) for seq in X], dtype=torch.long)
         loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
         probs = []
-        print("test")
         with torch.no_grad():
             for data in loader:
                 data = data.to(self.device)
@@ -165,6 +168,9 @@ def train_evaluate_register(preprocessing_run_id,model_name,epochs=10,ACCURACY_T
         ])
         clf = pipeline.named_steps["model"]
 
+
+        pipeline.fit(train_df["sequence"], train_df["label"])
+
         mlflow.log_params({
             "embedding_dim": clf.embedding_dim,
             "num_classes": clf.num_classes,
@@ -172,11 +178,9 @@ def train_evaluate_register(preprocessing_run_id,model_name,epochs=10,ACCURACY_T
             "lr": clf.lr,
             "batch_size": clf.batch_size,
             "epochs": clf.epochs,
-            "optimizer": "Adam",
-            "loss_fn":"CrossEntropyLoss"
+            "optimizer": clf.optimizer_name_,
+            "loss_fn": clf.criterion_name_
         })
-        pipeline.fit(train_df["sequence"], train_df["label"])
-
         y_pred = pipeline.predict(test_df["sequence"])
         acc = accuracy_score(test_df["label"], y_pred)
         print(f"Test Accuracy: {acc:.4f}")
