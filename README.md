@@ -65,7 +65,7 @@ python ./pipeline/scripts/app.py
 
 and then your model will be available at
 
-http://127.0.0.1:5001
+http://127.0.0.1:5001/predict
 
 you test it working or not by using Postman
 the result of it should look like this
